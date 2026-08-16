@@ -1,0 +1,4 @@
+interface:
+  display_name: "Integrate AppContextKit"
+  short_description: "Adopt the shared runtime-facts and throttling layer"
+  default_prompt: "Use $integrate-appcontextkit to integrate or migrate this Apple app to AppContextKit."

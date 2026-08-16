@@ -56,3 +56,7 @@ Persisted state lives in `UserDefaults` under the `AppContextKit.` prefix:
 - `AppContextKit.throttle.<key>`
 
 Throttle keys are stable identifiers: renaming one resets that throttle for existing installs.
+
+## Agent skill
+
+Integration and migration guidance for agents lives in [`.agents/skills/integrate-appcontextkit/`](.agents/skills/integrate-appcontextkit/SKILL.md), including the legacy UserDefaults key migration required so existing users are not reset to first-launch state.
