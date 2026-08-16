@@ -16,6 +16,15 @@ It exists so that the same fact ("which version is this", "how many launches", "
 - Login state, network state, and any per-feature policy ("show the paywall every 24h" is an app decision; this kit only supplies the clock math and storage).
 - UI of any kind.
 
+## Invariant: zero dependencies, in both directions
+
+This is the load-bearing property of the kit. Agents iterating on it must preserve both halves:
+
+1. **AppContextKit depends on nothing but Foundation.** No third-party packages, no other kits (RevenueCatKit, SupportKit, InAppPromotionKit, CrossPromotionKit, …), no UI frameworks. A feature that needs any of those belongs elsewhere.
+2. **No kit depends on AppContextKit.** Kits stay self-contained and receive facts as narrow inputs (a `Date`, an `Int`), mapped by the app's composition layer from `InstallationFacts` / `AppIdentity`. Duplicated *mechanism* inside a kit (its own date math for domain-specific frequency control) is acceptable; what this kit eliminates is duplicated *fact definitions* across apps.
+
+Consequences: this kit can be adopted at project creation time (it is enforced from the MVP stage, earlier than other kits), upgrading it never ripples through the kit dependency graph, and adding a dependency to `Package.swift` is a red flag in review, not a judgment call.
+
 ## Requirements
 
 - iOS 17+ / macOS 14+ / visionOS 1+
