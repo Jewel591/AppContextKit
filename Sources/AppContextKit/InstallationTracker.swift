@@ -8,6 +8,9 @@ import Foundation
 /// - `launchCount` includes the current launch.
 /// - `isFirstLaunchAfterUpdate` is true when the marketing version changed
 ///   since the previous launch. It is always false on the very first launch.
+/// - `currentVersionFirstLaunchDate` is when the currently running marketing
+///   version was first launched. On the very first launch it equals
+///   `firstLaunchDate`; it resets on the first launch after every update.
 public struct InstallationFacts: Sendable, Equatable {
     public let firstLaunchDate: Date
     public let launchCount: Int
@@ -15,6 +18,7 @@ public struct InstallationFacts: Sendable, Equatable {
     public let isFirstLaunchAfterUpdate: Bool
     /// Marketing version seen on the previous launch, `nil` on first launch.
     public let previousVersion: String?
+    public let currentVersionFirstLaunchDate: Date
 }
 
 /// Tracks install date, launch count, and version transitions.
@@ -28,6 +32,7 @@ public final class InstallationTracker {
         static let firstLaunchDate = "AppContextKit.installation.firstLaunchDate"
         static let launchCount = "AppContextKit.installation.launchCount"
         static let lastLaunchVersion = "AppContextKit.installation.lastLaunchVersion"
+        static let currentVersionFirstLaunchDate = "AppContextKit.installation.currentVersionFirstLaunchDate"
     }
 
     private let userDefaults: UserDefaults
@@ -52,11 +57,12 @@ public final class InstallationTracker {
             return registeredFacts
         }
 
+        let launchDate = now()
         let previousVersion = userDefaults.string(forKey: Keys.lastLaunchVersion)
         let storedFirstLaunchDate = userDefaults.object(forKey: Keys.firstLaunchDate) as? Date
         let isFirstLaunch = storedFirstLaunchDate == nil
 
-        let firstLaunchDate = storedFirstLaunchDate ?? now()
+        let firstLaunchDate = storedFirstLaunchDate ?? launchDate
         if isFirstLaunch {
             userDefaults.set(firstLaunchDate, forKey: Keys.firstLaunchDate)
         }
@@ -65,6 +71,17 @@ public final class InstallationTracker {
         userDefaults.set(launchCount, forKey: Keys.launchCount)
         userDefaults.set(currentVersion, forKey: Keys.lastLaunchVersion)
 
+        // Reset on version change; also seeds installs that predate this field
+        // (stored date missing), where "now" is the best available fact.
+        let storedVersionDate = userDefaults.object(forKey: Keys.currentVersionFirstLaunchDate) as? Date
+        let currentVersionFirstLaunchDate: Date
+        if let storedVersionDate, previousVersion == currentVersion {
+            currentVersionFirstLaunchDate = storedVersionDate
+        } else {
+            currentVersionFirstLaunchDate = launchDate
+            userDefaults.set(launchDate, forKey: Keys.currentVersionFirstLaunchDate)
+        }
+
         let facts = InstallationFacts(
             firstLaunchDate: firstLaunchDate,
             launchCount: launchCount,
@@ -72,7 +89,8 @@ public final class InstallationTracker {
             isFirstLaunchAfterUpdate: !isFirstLaunch
                 && previousVersion != nil
                 && previousVersion != currentVersion,
-            previousVersion: previousVersion
+            previousVersion: previousVersion,
+            currentVersionFirstLaunchDate: currentVersionFirstLaunchDate
         )
         registeredFacts = facts
         return facts

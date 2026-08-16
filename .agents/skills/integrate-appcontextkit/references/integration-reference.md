@@ -9,6 +9,7 @@ Names below come from real apps in the product matrix. Verify against the target
 | `AppContextKit.installation.firstLaunchDate` | `Date` | first `registerLaunch()` ever (or one-time migration seed) |
 | `AppContextKit.installation.launchCount` | `Int` | every `registerLaunch()` |
 | `AppContextKit.installation.lastLaunchVersion` | `String` | every `registerLaunch()` |
+| `AppContextKit.installation.currentVersionFirstLaunchDate` | `Date` | first `registerLaunch()` on each new version (also seeded once on installs that predate the field) |
 | `AppContextKit.throttle.<key>` | `Date` | `Throttle.recordRun()` for scenario `<key>` |
 
 Never write these keys directly outside the one-time legacy migration described below.

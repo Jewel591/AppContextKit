@@ -7,7 +7,7 @@ It exists so that the same fact ("which version is this", "how many launches", "
 ## What it contains
 
 - **`AppIdentity`** — canonical read of bundle identifier, display name, marketing version, and build number, plus the standard `"1.2.0 (123)"` display form.
-- **`InstallationTracker`** — first launch date, launch count, first launch, and first launch after an update. A "launch" is one `registerLaunch()` call, made once per process start.
+- **`InstallationTracker`** — first launch date, launch count, first launch, first launch after an update, and when the current version was first launched. A "launch" is one `registerLaunch()` call, made once per process start.
 - **`Throttle`** — persistent "at most once every N hours/days" gate, one instance per scenario. It answers *is it allowed now*; whether to run at all stays with the caller.
 
 ## What deliberately stays out
@@ -15,6 +15,23 @@ It exists so that the same fact ("which version is this", "how many launches", "
 - Subscription/entitlement state — that is RevenueCatKit's domain.
 - Login state, network state, and any per-feature policy ("show the paywall every 24h" is an app decision; this kit only supplies the clock math and storage).
 - UI of any kind.
+
+## Scope decision log
+
+Candidate facts we have explicitly evaluated for inclusion, with verdicts. Re-proposing a rejected item requires new arguments against the recorded reason, not just re-raising it. (Evaluated 2026-08-16, from a proposed all-encompassing `AppContext` design.)
+
+| Candidate | Verdict | Reason |
+|---|---|---|
+| App version and build | Already in | `AppIdentity` |
+| First install date | Already in | `InstallationTracker.firstLaunchDate` |
+| Launch count | Already in | `InstallationTracker.launchCount`; definition fixed to "one process start" |
+| First launch after update | Already in | `InstallationTracker.isFirstLaunchAfterUpdate` + `previousVersion` |
+| Date the current version was first launched | **Added (0.2.0)** | Near-zero cost on top of the existing version-change detection; needed by "within N days after update" policies (What's New windows, review prompts), which every app would otherwise reimplement |
+| Current session (session ID, foreground sessions) | Rejected | The definition of a "session" (process start vs. foregrounding) legitimately differs per app; a unified type would create same-name-different-meaning facts, the exact failure this kit exists to prevent |
+| Locale / language | Rejected | `Locale.current.identifier` is already one unambiguous, stateless line; wrapping it adds indirection without removing any inconsistency |
+| Login state | Rejected | Violates the zero-dependency invariant — it belongs to each app's Supabase session. Compose it as a narrow input at the app layer |
+| Subscription / entitlement state | Rejected | RevenueCatKit's domain; same invariant violation |
+| Network state | Rejected | Live state requiring a resident `NWPathMonitor` and prone to staleness in a snapshot; consumers should check at the point of use |
 
 ## Invariant: zero dependencies, in both directions
 
@@ -61,7 +78,7 @@ All types accept an injected `UserDefaults` and `now` closure for tests.
 
 Persisted state lives in `UserDefaults` under the `AppContextKit.` prefix:
 
-- `AppContextKit.installation.firstLaunchDate` / `.launchCount` / `.lastLaunchVersion`
+- `AppContextKit.installation.firstLaunchDate` / `.launchCount` / `.lastLaunchVersion` / `.currentVersionFirstLaunchDate`
 - `AppContextKit.throttle.<key>`
 
 Throttle keys are stable identifiers: renaming one resets that throttle for existing installs.

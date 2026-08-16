@@ -27,6 +27,7 @@ func firstEverLaunchIsRecordedAsFirstLaunch() throws {
     #expect(facts.launchCount == 1)
     #expect(facts.firstLaunchDate == installDate)
     #expect(facts.previousVersion == nil)
+    #expect(facts.currentVersionFirstLaunchDate == installDate)
 }
 
 @MainActor
@@ -93,4 +94,55 @@ func versionChangeIsReportedOnceAsFirstLaunchAfterUpdate() throws {
     ).registerLaunch()
     #expect(!nextLaunch.isFirstLaunchAfterUpdate)
     #expect(nextLaunch.previousVersion == "1.1.0")
+}
+
+@MainActor
+@Test
+func currentVersionFirstLaunchDateResetsOnUpdateAndThenSticks() throws {
+    let (defaults, cleanup) = try makeDefaults()
+    defer { cleanup() }
+
+    let installDate = Date(timeIntervalSince1970: 1_000_000)
+    InstallationTracker(userDefaults: defaults, currentVersion: "1.0.0", now: { installDate })
+        .registerLaunch()
+
+    let updateDate = Date(timeIntervalSince1970: 2_000_000)
+    let afterUpdate = InstallationTracker(
+        userDefaults: defaults,
+        currentVersion: "1.1.0",
+        now: { updateDate }
+    ).registerLaunch()
+    #expect(afterUpdate.currentVersionFirstLaunchDate == updateDate)
+    #expect(afterUpdate.firstLaunchDate == installDate)
+
+    let laterDate = Date(timeIntervalSince1970: 3_000_000)
+    let laterLaunch = InstallationTracker(
+        userDefaults: defaults,
+        currentVersion: "1.1.0",
+        now: { laterDate }
+    ).registerLaunch()
+    #expect(laterLaunch.currentVersionFirstLaunchDate == updateDate)
+}
+
+@MainActor
+@Test
+func missingStoredVersionDateIsSeededWithCurrentLaunchDate() throws {
+    // Installs that tracked launches before this field existed: same version,
+    // but no stored currentVersionFirstLaunchDate.
+    let (defaults, cleanup) = try makeDefaults()
+    defer { cleanup() }
+
+    let installDate = Date(timeIntervalSince1970: 1_000_000)
+    InstallationTracker(userDefaults: defaults, currentVersion: "1.0.0", now: { installDate })
+        .registerLaunch()
+    defaults.removeObject(forKey: "AppContextKit.installation.currentVersionFirstLaunchDate")
+
+    let seedDate = Date(timeIntervalSince1970: 2_000_000)
+    let facts = InstallationTracker(
+        userDefaults: defaults,
+        currentVersion: "1.0.0",
+        now: { seedDate }
+    ).registerLaunch()
+    #expect(facts.currentVersionFirstLaunchDate == seedDate)
+    #expect(!facts.isFirstLaunchAfterUpdate)
 }
