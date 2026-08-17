@@ -69,16 +69,16 @@ Notes:
 - Keep legacy key string literals only inside the migration function. Delete the types and constants that owned them.
 - Leave a legacy key's stored value in place if another subsystem still reads it (e.g. a review-prompt manager that keeps its own domain keys); copying is not stealing.
 
-### Known legacy keys per app (as of 2026-08)
+### Known legacy keys per app (as of 2026-08-17)
 
 | App | Legacy key | Meaning | Migration |
 |---|---|---|---|
 | CodeCat | `appFirstLaunchDateV1` (`AppInstallTracker`) | install date | seed `installation.firstLaunchDate`, then delete `AppInstallTracker` |
-| MONO / Apper / CodeCat | `reviewPrompt_firstLaunchDate` | install date proxy inside review-prompt domain | usable as a seeding source; the key itself stays with the review-prompt domain |
+| MONO / Apper / CodeCat / Supamate | `reviewPrompt_firstLaunchDate` | install date proxy inside review-prompt domain | usable as a seeding source; the key itself stays with the review-prompt domain |
 | MONO | `launchMarketingAdLastShownDateV2` (`LaunchPaywallManager`) | last paywall shown | seed `AppContextKit.throttle.launchPaywall` with the stored date |
-| MONO / CodeCat / Filmo | `NextUpdateRemindDate` (`AppUpdateViewModel`) | **future** "remind me later" date | ⚠️ semantics differ from a throttle's last-run date. Converting: `lastRun = nextRemindDate - interval`, or keep the app-side snooze logic and only use `Throttle` for the periodic check |
-| MONO / CodeCat / Filmo | `IgnoredAppVersion` | user chose to skip a version | domain state, not a throttle — stays in the app |
-| MONO / Apper / CodeCat | `reviewPrompt_appSessionCount`, `reviewPrompt_successfulActionCount`, `reviewPrompt_lastReviewPromptDate`, … | review-prompt domain counters | stay in the review-prompt domain (future RatingKit), not AppContextKit |
+| MONO / CodeCat / Filmo | `NextUpdateRemindDate` / `IgnoredAppVersion` | AppUpdateKit snooze / skip | **stay with AppUpdateKit** (it writes these exact legacy names). Do not seed them into `Throttle` — a remind-later date is a future snooze, not a last-run timestamp |
+| MONO / Apper / CodeCat / Supamate | `reviewPrompt_appSessionCount`, `reviewPrompt_successfulActionCount`, `reviewPrompt_lastReviewPromptDate`, `reviewPrompt_pendingReviewRequest`, … | review-prompt domain counters | stay in the review-prompt domain; map them through `ReviewPromptStorageKeys` when adopting ReviewKit. Do not copy them into AppContextKit |
+| LastTime | *(none)* | no pre-kit first-launch / review keys | 2026-08-16 migration established new keys; existing installs start install-age and review counts from that build |
 
 ## Replacing version reads
 
