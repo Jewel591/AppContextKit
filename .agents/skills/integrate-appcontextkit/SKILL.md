@@ -36,6 +36,13 @@ Also read and obey the target repository's `AGENTS.md` / `CLAUDE.md` or equivale
 - Domain policy (ratings, paywalls, campaigns) lives in the app or its own Kit and receives facts as narrow inputs; Kits do not depend on AppContextKit.
 - Storage keys under the `AppContextKit.` prefix belong to the Kit. Never write them directly outside the one-time legacy migration.
 
+## Host tests
+
+- Test only host-owned facts: every real shipped key is seeded before `registerLaunch()`, the composition root registers once, and app policy consumes `InstallationFacts` / `Throttle` through the intended mapping.
+- Do not retest AppContextKit's counter, date arithmetic, bundle parsing, or storage implementation in every app; those fixed contracts belong to package tests.
+- Do not inspect `project.pbxproj`, imports, constructor strings, or deleted type names from XCTest. Structural assembly belongs to `app-context-kit-lint`.
+- Use an isolated `UserDefaults(suiteName:)`, fixed time, and public APIs. If two apps need the same helper or expectations, move the missing behavior and its tests into AppContextKit instead of publishing a shared TestSupport product.
+
 ## Review the result
 
 Before declaring the integration complete, search the whole app for leftover direct reads the Kit now owns: `CFBundleShortVersionString` / `CFBundleVersion` outside `AppIdentity` call sites, surviving first-launch/install-date keys being written, and date-comparison throttle logic. Confirm `registerLaunch()` cannot run more than once per process and cannot run before the legacy seeding. Confirm an existing user upgrading to this build keeps their original first-launch date and does not see first-launch-only UI again. State explicitly which legacy UserDefaults keys were migrated, which were left in place for other consumers, and which were deleted.
